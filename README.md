@@ -1,7 +1,7 @@
-Ludum Dare 39 :: Theme TBA
+Ludum Dare 39 :: Theme "Running out of Power"
 ====================
 
-A game made in 48 hours for the [39th Ludum Dare](https://ldjam.com/events/ludum-dare/39) game development competition using [Unity](https://unity3d.com/). The theme was "??????????". At some point I may update this template text with a proper description... until then enjoy the mystery.
+A game made in 48 hours for the [39th Ludum Dare](https://ldjam.com/events/ludum-dare/39) game development competition using [Unity](https://unity3d.com/). The theme was "Running out of Power". At some point I may update this template text with a proper description... until then enjoy the mystery.
 
 License
 -----------
