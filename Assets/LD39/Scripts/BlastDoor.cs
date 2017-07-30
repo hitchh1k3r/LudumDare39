@@ -10,6 +10,7 @@ public class BlastDoor : MonoBehaviour
   public float doorHeight;
   public Color triggeredColor;
   public float exposionStopOffset = -0.514f;
+  public int savePoint;
 
   // Refernaces:
   public Transform door;
@@ -56,10 +57,15 @@ public class BlastDoor : MonoBehaviour
         movePos.x = transform.position.x + exposionStopOffset;
         GlobalState.Explosion.transform.position = movePos;
       }
+      if(savePoint > 0)
+      {
+        PlayerPrefs.SetInt("SavePoint", savePoint);
+      }
     }
     if(!burning)
     {
-      if(GlobalState.Explosion.transform.position.x > transform.position.x + exposionStopOffset)
+      if(GlobalState.Explosion.transform.position.x > transform.position.x + exposionStopOffset &&
+            triggered)
       {
         explosionBasePos = GlobalState.Explosion.transform.position;
         burning = true;
@@ -68,10 +74,10 @@ public class BlastDoor : MonoBehaviour
         GlobalState.Explosion.Pause();
       }
     }
-    else if(burnTimer < 10.0f)
+    else if(burnTimer < 15.0f)
     {
       burnTimer += Time.deltaTime;
-      if(burnTimer >= 10.0f)
+      if(burnTimer >= 15.0f)
       {
         doorFire.enableEmission = false;
         doorHeat.gameObject.SetActive(false);
@@ -80,12 +86,12 @@ public class BlastDoor : MonoBehaviour
       }
       else
       {
-        Vector3 doorShake = burnTimer * 0.005f * Random.onUnitSphere;
+        Vector3 doorShake = burnTimer * 0.003333f * Random.onUnitSphere;
         door.localPosition = doorBasePos + doorShake;
         doorHeat.transform.localPosition = heatBasePos + doorShake;
         GlobalState.Explosion.transform.position = explosionBasePos +
-              (burnTimer * 0.0025f + 0.0075f) * Random.onUnitSphere +
-              (burnTimer * 0.11f) * Vector3.right;
+              (burnTimer * 0.001666f + 0.0075f) * Random.onUnitSphere +
+              (burnTimer * 0.073333f) * Vector3.right;
       }
     }
   }
@@ -101,6 +107,15 @@ public class BlastDoor : MonoBehaviour
       Gizmos.DrawWireCube(door.position + doorHeight * Vector3.up, new Vector3(door.lossyScale.x,
             door.lossyScale.y, door.lossyScale.z));
     }
+  }
+
+  // Utilities:
+
+  public void RemoveDoor()
+  {
+    triggered = true;
+    burning = true;
+    burnTimer = 100;
   }
 
 }

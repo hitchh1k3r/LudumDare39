@@ -46,7 +46,10 @@ public class ExplosionController : MonoBehaviour
           float scale = playerOffset;
           scale = 3 * scale * scale * scale / 500.0f + 0.25f;
           Time.timeScale = scale;
-          effectiveSpeed *= scale;
+          if(GlobalState.Power.powerLevel > 0.01f)
+          {
+            effectiveSpeed *= scale;
+          }
         }
       }
       Vector3 newPos = transform.position + Time.deltaTime * effectiveSpeed;

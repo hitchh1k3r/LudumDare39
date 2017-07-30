@@ -10,18 +10,34 @@ public class PlayerController : MonoBehaviour
   public float runMultiplier = 1.5f;
   public float runPower = 0.0166666666667f;
   public float turboPower = 0.1f;
+  public float jumpPower = 0.075f;
+  public float jumpChargeLength = 1.0f;
 
   // Referances:
   public Animator playerAni;
   public Rigidbody2D physics;
+  public MeshRenderer lowPowerText;
+  public MeshRenderer notEnoughPowerText;
 
   // State:
   private MoveFacing moveFacing = MoveFacing.RIGHT;
   private MoveState moveState = MoveState.IDLE;
   private float xMovement;
   private bool airborne;
+  private Coroutine notEnoughCor;
+  private bool powerPop;
+  private float powerTimer;
+  private float jumpChargeTime;
+  private float jumpDechargeTime;
+  private float jumpChargePayment;
 
   // Messages:
+
+  void Awake()
+  {
+    notEnoughPowerText.enabled = false;
+    lowPowerText.enabled = false;
+  }
 
   void Update()
   {
@@ -31,19 +47,76 @@ public class PlayerController : MonoBehaviour
       MoveState newState = MoveState.IDLE;
       MoveFacing newFacing = MoveFacing.UNCHANGED;
       float xSpeed = Input.GetAxis("Horizontal") * moveSpeed *
-            ((Input.GetButton("Run") && powerLevel > 0.25f) ? runMultiplier : 1);
+            ((!airborne && Input.GetButton("Run") && powerLevel > jumpPower * 3) ?
+              runMultiplier : 1);
+
+      if(Input.GetAxisRaw("Vertical") < -0.5f && !airborne)
+      {
+        if(powerLevel > jumpPower * 3 || jumpChargeTime > 0)
+        {
+          xSpeed = 0;
+          jumpDechargeTime = 0;
+          jumpChargeTime += Time.deltaTime;
+          if(jumpChargePayment < jumpPower)
+          {
+            float payment = jumpPower * Time.deltaTime / jumpChargeLength;
+            if(jumpChargePayment + payment > jumpPower)
+            {
+              payment = jumpPower - jumpChargePayment;
+            }
+            jumpChargePayment += payment;
+            powerLevel -= payment;
+          }
+        }
+        else
+        {
+          if(notEnoughCor != null)
+          {
+            StopCoroutine(notEnoughCor);
+          }
+          notEnoughCor = StartCoroutine(NotEnoughPower());
+        }
+      }
+      else
+      {
+        jumpDechargeTime += Time.deltaTime;
+        if(jumpDechargeTime > 0.2f || airborne)
+        {
+          jumpDechargeTime = 0;
+          jumpChargeTime = 0;
+          if(jumpChargePayment > 0)
+          {
+            powerLevel += jumpChargePayment;
+            jumpChargePayment = 0;
+          }
+        }
+      }
+
       xMovement = xSpeed;
 
       if(Input.GetButtonDown("Jump") && !airborne)
       {
-        if(powerLevel > 0.25f)
+        if(powerLevel > jumpPower * 3 || jumpChargeTime > 0)
         {
-          powerLevel -= 0.075f;
-          physics.AddForce(new Vector2(0, 15), ForceMode2D.Impulse);
+          if(jumpChargeTime >= jumpChargeLength)
+          {
+            jumpChargePayment = 0;
+            powerLevel -= jumpPower;
+            physics.AddForce(new Vector2(0, 22.5f), ForceMode2D.Impulse);
+          }
+          else
+          {
+            powerLevel -= jumpPower;
+            physics.AddForce(new Vector2(0, 15), ForceMode2D.Impulse);
+          }
         }
         else
         {
-          // NOT ENOUGH POWER!!!
+          if(notEnoughCor != null)
+          {
+            StopCoroutine(notEnoughCor);
+          }
+          notEnoughCor = StartCoroutine(NotEnoughPower());
         }
       }
       if(xSpeed < 0)
@@ -53,20 +126,23 @@ public class PlayerController : MonoBehaviour
       }
       if(xSpeed > 0)
       {
-        powerLevel -= Time.deltaTime * runPower;
-        if(Input.GetButton("Run") && powerLevel > 0.25f)
+        if(!airborne)
         {
-          powerLevel -= Time.deltaTime * turboPower;
+          powerLevel -= Time.deltaTime * runPower;
+          if(Input.GetButton("Run") && powerLevel > jumpPower * 3)
+          {
+            powerLevel -= Time.deltaTime * turboPower;
+          }
         }
         if(powerLevel <= 0)
         {
-          xSpeed *= 0.1f;
-          xMovement *= 0.1f;
+          xSpeed *= 0.4f;
+          xMovement *= 0.4f;
           newState = MoveState.CRAWLING;
         }
         else
         {
-          if(powerLevel < 0.1f)
+          if(powerLevel < 0.05f)
           {
             xSpeed *= 0.85f;
             xMovement *= 0.85f;
@@ -76,7 +152,7 @@ public class PlayerController : MonoBehaviour
       }
       if(newState == MoveState.CRAWLING)
       {
-        playerAni.SetFloat("Speed", xSpeed * 20 / moveSpeed);
+        playerAni.SetFloat("Speed", xSpeed * 5 / moveSpeed);
       }
       else
       {
@@ -86,8 +162,8 @@ public class PlayerController : MonoBehaviour
       if(newState != moveState)
       {
         moveState = newState;
-        playerAni.SetBool("crawling", moveState == MoveState.CRAWLING);
       }
+      playerAni.SetBool("crawling", powerLevel < 0.01f);
       if(newFacing != moveFacing && moveState != MoveState.IDLE)
       {
         moveFacing = newFacing;
@@ -101,17 +177,61 @@ public class PlayerController : MonoBehaviour
         }
       }
       GlobalState.Power.powerLevel = powerLevel;
+      if(powerLevel < 0.001f || powerPop)
+      {
+        powerTimer += Time.deltaTime;
+        if(powerTimer < 0.1f)
+        {
+          notEnoughPowerText.enabled = false;
+        }
+        else
+        {
+          notEnoughPowerText.enabled = true;
+        }
+        if(powerTimer > 0.4f)
+        {
+          powerTimer = 0;
+        }
+        lowPowerText.enabled = false;
+      }
+      else
+      {
+        if(powerLevel < 0.3333333f)
+        {
+          powerTimer += Time.deltaTime;
+          if(powerTimer < 0.25f)
+          {
+            lowPowerText.enabled = false;
+          }
+          else
+          {
+            lowPowerText.enabled = true;
+          }
+          if(powerTimer > 1.0f)
+          {
+            powerTimer = 0;
+          }
+        }
+        else
+        {
+          lowPowerText.enabled = false;
+        }
+        notEnoughPowerText.enabled = false;
+      }
+      playerAni.SetBool("airborne", airborne);
+      playerAni.SetFloat("jump charge", jumpChargeTime / jumpChargeLength);
     }
     else
     {
       xMovement = 0;
       playerAni.SetFloat("Speed", 0);
+      notEnoughPowerText.enabled = false;
     }
   }
 
-  void OnCollisionEnter2D(Collision2D collision)
+  void OnCollisionStay2D(Collision2D collision)
   {
-    if(collision.gameObject.tag == "Ground")
+    if(collision.gameObject.tag == "Ground" && collision.contacts[0].normal.y > 0.1f)
     {
       airborne = false;
     }
@@ -120,10 +240,19 @@ public class PlayerController : MonoBehaviour
   void FixedUpdate()
   {
     physics.velocity = new Vector2(xMovement, physics.velocity.y);
-    if(physics.velocity.y < -0.01f || physics.velocity.y > 0.01f)
+    if(physics.velocity.y < -0.3f || physics.velocity.y > 0.3f)
     {
       airborne = true;
     }
+  }
+
+  // Coroutines:
+
+  private IEnumerator NotEnoughPower()
+  {
+    powerPop = true;
+    yield return new WaitForSeconds(1.0f);
+    powerPop = false;
   }
 
   // PlayerController //*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*

@@ -4,4 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/LD39/Scene/Platformer.unity
+    guid: f70ab6f7004514be7a42f8c3fa8be7d7
+  - enabled: 1
+    path: Assets/LD39/Scene/Victory.unity
+    guid: 0644a66c48c3b481ca73495aed65d095
